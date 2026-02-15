@@ -33,21 +33,10 @@ namespace ResourceTracker
 
 	static void OnAddKey()
 	{
-		bool fired = false;
-
-		if (DispatchUIEvent<RE::ResearchMenu_ToggleTrackingProject>()) {
-			spdlog::info("ResourceTracker: B -> ResearchMenu_ToggleTrackingProject");
-			fired = true;
-		}
-
-		if (DispatchUIEvent<RE::CraftingMenu_ToggleTracking>()) {
-			spdlog::info("ResourceTracker: B -> CraftingMenu_ToggleTracking");
-			fired = true;
-		}
-
-		if (!fired) {
-			spdlog::info("ResourceTracker: B pressed, but no tracking event source was available");
-		}
+		// Temporary safety mode:
+		// Dispatching internal UI tracking events currently triggers invalid Address Library ID lookups
+		// on this runtime/mod stack. Keep the plugin stable while we switch to a safer hook path.
+		spdlog::warn("ResourceTracker: B pressed, but tracking dispatch is temporarily disabled for stability");
 	}
 
 	static void OnResetKey()
