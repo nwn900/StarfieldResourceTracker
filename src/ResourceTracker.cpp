@@ -7,44 +7,6 @@ namespace ResourceTracker
 	static std::atomic<bool> g_running{ false };
 	static std::thread       g_inputThread;
 	static std::atomic<bool> g_gameReady{ false };
-	static std::atomic<bool> g_researchMenuOpen{ false };
-	static std::atomic<bool> g_craftingMenuOpen{ false };
-	static std::atomic<bool> g_menuSinkRegistered{ false };
-
-	namespace
-	{
-		class MenuOpenCloseSink final : public RE::BSTEventSink<RE::MenuOpenCloseEvent>
-		{
-		public:
-			RE::BSEventNotifyControl ProcessEvent(
-				const RE::MenuOpenCloseEvent& a_event,
-				RE::BSTEventSource<RE::MenuOpenCloseEvent>*) override
-			{
-				const std::string name = a_event.menuName.c_str();
-				const bool open = a_event.opening;
-
-				// Diagnostic log to discover exact menu names on this runtime.
-				spdlog::info("ResourceTracker: Menu {}: {}", open ? "opened" : "closed", name);
-
-				const bool isResearch = name.find("Research") != std::string::npos;
-				const bool isCrafting =
-					name.find("Craft") != std::string::npos ||
-					name.find("Workshop") != std::string::npos ||
-					name.find("Workbench") != std::string::npos;
-
-				if (isResearch) {
-					g_researchMenuOpen = open;
-				}
-				if (isCrafting) {
-					g_craftingMenuOpen = open;
-				}
-
-				return RE::BSEventNotifyControl::kContinue;
-			}
-		};
-
-		MenuOpenCloseSink g_menuSink;
-	}
 
 	static std::string VKToName(int vk)
 	{
@@ -71,21 +33,21 @@ namespace ResourceTracker
 
 	static void OnAddKey()
 	{
-		if (g_researchMenuOpen) {
-			if (DispatchUIEvent<RE::ResearchMenu_ToggleTrackingProject>()) {
-				spdlog::info("ResourceTracker: B -> ResearchMenu_ToggleTrackingProject");
-				return;
-			}
+		bool fired = false;
+
+		if (DispatchUIEvent<RE::ResearchMenu_ToggleTrackingProject>()) {
+			spdlog::info("ResourceTracker: B -> ResearchMenu_ToggleTrackingProject");
+			fired = true;
 		}
 
-		if (g_craftingMenuOpen) {
-			if (DispatchUIEvent<RE::CraftingMenu_ToggleTracking>()) {
-				spdlog::info("ResourceTracker: B -> CraftingMenu_ToggleTracking");
-				return;
-			}
+		if (DispatchUIEvent<RE::CraftingMenu_ToggleTracking>()) {
+			spdlog::info("ResourceTracker: B -> CraftingMenu_ToggleTracking");
+			fired = true;
 		}
 
-		spdlog::info("ResourceTracker: B pressed, but no supported menu context detected");
+		if (!fired) {
+			spdlog::info("ResourceTracker: B pressed, but no tracking event source was available");
+		}
 	}
 
 	static void OnResetKey()
@@ -144,14 +106,6 @@ namespace ResourceTracker
 		spdlog::info("ResourceTracker: Press [{}] at a workbench/research menu to toggle tracking", VKToName(s.addKey));
 		spdlog::info("ResourceTracker: Press [{}] to reset local tracked list", VKToName(s.resetKey));
 
-		if (auto* ui = RE::UI::GetSingleton(); ui) {
-			ui->RegisterSink<RE::MenuOpenCloseEvent>(&g_menuSink);
-			g_menuSinkRegistered = true;
-			spdlog::info("ResourceTracker: Registered menu open/close sink");
-		} else {
-			spdlog::warn("ResourceTracker: UI singleton unavailable; menu context detection disabled");
-		}
-
 		g_running = true;
 		g_inputThread = std::thread(InputThreadFunc);
 	}
@@ -161,13 +115,6 @@ namespace ResourceTracker
 		g_running = false;
 		if (g_inputThread.joinable()) {
 			g_inputThread.join();
-		}
-
-		if (g_menuSinkRegistered) {
-			if (auto* ui = RE::UI::GetSingleton(); ui) {
-				ui->UnregisterSink<RE::MenuOpenCloseEvent>(&g_menuSink);
-			}
-			g_menuSinkRegistered = false;
 		}
 
 		TrackedResources::Get().Save();
