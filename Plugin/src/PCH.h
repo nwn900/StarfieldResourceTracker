@@ -121,12 +121,11 @@ DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 	data.PluginName(Plugin::NAME);
 	data.AuthorName(Plugin::AUTHOR);
 
-	// Use Address Library for SFSE Plugins - compatible with all game versions
-	data.UsesAddressLibrary(true);
-	// Version independent signature scanning (optional fallback)
-	// data.UsesSigScanning(true);
-
-	// Support 1.14.74 (RUNTIME_LATEST in SDK) plus 1.15.x; Address Library handles offsets per version
+	// No REL::ID lookups yet, so don't request Address Library loading
+	data.UsesAddressLibrary(false);
+	// No game struct layout dependency
+	data.HasNoStructUse(true);
+	// Compatible with all known versions
 	data.CompatibleVersions({
 		SFSE::RUNTIME_LATEST,
 		REL::Version(1, 15, 216, 0),
