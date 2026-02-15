@@ -1,0 +1,18 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": { "major": 3, "minor": 26, "patch": 0 },
+	"configurePresets": [
+		{ "name": "common", "hidden": true, "cacheVariables": { "CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXXFLAGS}", "SFSE_SUPPORT_XBYAK": "ON" } },
+		{ "name": "packaging-vcpkg", "hidden": true, "cacheVariables": { "USING_VCPKG": "ON", "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake", "VCPKG_HOST_TRIPLET": "x64-windows-static-md", "VCPKG_TARGET_TRIPLET": "x64-windows-static-md" } },
+		{ "name": "buildtype-debug", "hidden": true, "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
+		{ "name": "buildtype-release", "hidden": true, "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } },
+		{ "name": "x64", "hidden": true, "architecture": "x64", "cacheVariables": { "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:DLL>" } },
+		{ "name": "generator-msvc", "hidden": true, "inherits": "x64", "generator": "Visual Studio 17 2022" },
+		{ "name": "build-debug-msvc-msvc", "inherits": [ "common", "packaging-vcpkg", "buildtype-debug", "generator-msvc" ], "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" } },
+		{ "name": "build-release-msvc-msvc", "inherits": [ "common", "packaging-vcpkg", "buildtype-release", "generator-msvc" ], "cacheVariables": { "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" } }
+	],
+	"buildPresets": [
+		{ "name": "debug-msvc-msvc", "configurePreset": "build-debug-msvc-msvc", "displayName": "Debug (MSVC)" },
+		{ "name": "release-msvc-msvc", "configurePreset": "build-release-msvc-msvc", "displayName": "Release (MSVC)" }
+	]
+}

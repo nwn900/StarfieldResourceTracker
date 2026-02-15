@@ -1,0 +1,56 @@
+name: Build ResourceTracker DLL
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Clone dependencies (if not submodules)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "extern/CommonLibSF/CMakeLists.txt")) {
+            New-Item -ItemType Directory -Force -Path extern | Out-Null
+            git clone --depth 1 https://github.com/Starfield-Reverse-Engineering/CommonLibSF.git extern/CommonLibSF
+          }
+          if (-not (Test-Path "extern/DKUtil/include/DKUtil/Logger.hpp")) {
+            if (-not (Test-Path "extern")) { New-Item -ItemType Directory -Force -Path extern | Out-Null }
+            git clone --depth 1 https://github.com/gottyduke/DKUtil.git extern/DKUtil
+          }
+
+      - name: Set up vcpkg
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+          .\vcpkg\vcpkg install spdlog nlohmann-json xbyak --triplet x64-windows-static-md
+
+      - name: Configure CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        shell: pwsh
+        run: |
+          cmake -B build -S Plugin `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DSFSE_SUPPORT_XBYAK=ON `
+            -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Upload ResourceTracker.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: ResourceTracker-DLL
+          path: build/Release/ResourceTracker.dll

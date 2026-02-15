@@ -1,0 +1,12 @@
+{
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+	"name": "resource-tracker",
+	"version-string": "1.0.0",
+	"description": "SFSE plugin: track missing resources for research, weapon/armor mods, and industrial fabrication (magnifier icon in vendor/container UI)",
+	"homepage": "https://github.com/yourusername/StarfieldResourceTracker",
+	"dependencies": [
+		"spdlog",
+		"nlohmann-json",
+		"xbyak"
+	]
+}

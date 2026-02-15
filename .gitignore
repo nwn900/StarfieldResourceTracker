@@ -1,0 +1,14 @@
+/build/
+Plugin/build/
+# Dependencies cloned locally; CI clones them
+extern/*
+!extern/.gitkeep
+*.user
+.vs/
+*.sln
+*.vcxproj*
+cmake-build-*/
+out/
+dist/*.dll
+dist/*.ps1
+!dist/rules/

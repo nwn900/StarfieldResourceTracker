@@ -1,0 +1,9 @@
+[
+	{
+		"action": "copy",
+		"params": [
+			"{cmake_output}ResourceTracker.dll",
+			"{target_base}ResourceTracker.dll"
+		]
+	}
+]
