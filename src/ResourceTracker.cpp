@@ -134,14 +134,6 @@ namespace ResourceTracker
 			"ResourceTracker: Scan stats - COBJ forms: {} (with components: {}), RSPJ forms: {} (with components: {}), raw components: {}",
 			cobjForms, cobjWithComponents, rspjForms, rspjWithComponents, rawComponents);
 		spdlog::info("ResourceTracker: Scanned recipes. {} new resources tracked (total: {})", added, after);
-		RE::DebugNotification(std::format("ResourceTracker: {} new resource(s), total {}", added, after).c_str());
-
-		// Show in-game console notification
-		auto* console = RE::ConsoleLog::GetSingleton();
-		if (console)
-		{
-			console->Log("[ResourceTracker] Tracked {} new resource(s) (total: {})", added, after);
-		}
 	}
 
 	static void OnAddKey()
@@ -154,13 +146,6 @@ namespace ResourceTracker
 		auto before = TrackedResources::Get().Count();
 		TrackedResources::Get().Clear();
 		spdlog::info("ResourceTracker: [RESET] Cleared {} tracked resource(s)", before);
-
-		auto* console = RE::ConsoleLog::GetSingleton();
-		if (console)
-		{
-			console->Log("[ResourceTracker] Cleared {} tracked resource(s)", before);
-		}
-		RE::DebugNotification("[ResourceTracker] Tracked list reset");
 	}
 
 	static void InputThreadFunc()
@@ -182,18 +167,9 @@ namespace ResourceTracker
 			if (!strstr(title, "Starfield"))
 				continue;
 
-			// Visible in the in-game console overlay, gives the player a persistent hint.
+			// Keep startup path minimal until menu event hooks are in place.
 			if (!g_hintShown && g_gameReady) {
-				auto* console = RE::ConsoleLog::GetSingleton();
-				if (console) {
-					console->SetUseConsoleOverlay(true);
-					console->Log("[ResourceTracker] Press [%s] Add to the list  |  Press [%s] Reset list",
-						VKToName(settings.addKey).c_str(),
-						VKToName(settings.resetKey).c_str());
-					RE::DebugNotification(std::format("ResourceTracker: [{}] Add to list, [{}] Reset list",
-						VKToName(settings.addKey), VKToName(settings.resetKey)).c_str());
-					g_hintShown = true;
-				}
+				g_hintShown = true;
 			}
 
 			bool curAdd   = (GetAsyncKeyState(settings.addKey)   & 0x8000) != 0;
