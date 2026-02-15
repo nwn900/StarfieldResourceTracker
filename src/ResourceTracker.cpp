@@ -40,6 +40,13 @@ namespace ResourceTracker
 
 	static void ScanAndTrackMissingResources()
 	{
+		auto* dh = RE::TESDataHandler::GetSingleton();
+		if (!dh)
+		{
+			spdlog::error("ResourceTracker: TESDataHandler not available");
+			return;
+		}
+
 		if (!g_dumpedArrayHealth) {
 			g_dumpedArrayHealth = true;
 			std::size_t nonEmpty = 0;
@@ -62,13 +69,6 @@ namespace ResourceTracker
 
 		auto& tracked = TrackedResources::Get();
 		std::size_t before = tracked.Count();
-
-		auto* dh = RE::TESDataHandler::GetSingleton();
-		if (!dh)
-		{
-			spdlog::error("ResourceTracker: TESDataHandler not available");
-			return;
-		}
 
 		std::vector<FormID> toAdd;
 		std::size_t cobjForms = 0;
