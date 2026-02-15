@@ -126,10 +126,11 @@ DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 	// Version independent signature scanning (optional fallback)
 	// data.UsesSigScanning(true);
 
+	// Support 1.14.74 (RUNTIME_LATEST in SDK) plus 1.15.x; Address Library handles offsets per version
 	data.CompatibleVersions({
 		SFSE::RUNTIME_LATEST,
-		// Explicit versions for 1.15.222 and earlier (Address Library resolves at runtime)
-		// RUNTIME_LATEST covers current; Address Library .bin files cover specific versions
+		REL::Version(1, 15, 216, 0),
+		REL::Version(1, 15, 222, 0),
 	});
 
 	return data;
