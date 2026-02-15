@@ -57,6 +57,28 @@ namespace ResourceTracker
 		spdlog::info("ResourceTracker: [RESET] Cleared {} tracked resource(s)", before);
 	}
 
+	static void QueueAddAction()
+	{
+		if (auto* tasks = SFSE::GetTaskInterface(); tasks) {
+			tasks->AddTask([]() {
+				OnAddKey();
+			});
+		} else {
+			spdlog::warn("ResourceTracker: Task interface unavailable for add action");
+		}
+	}
+
+	static void QueueResetAction()
+	{
+		if (auto* tasks = SFSE::GetTaskInterface(); tasks) {
+			tasks->AddTask([]() {
+				OnResetKey();
+			});
+		} else {
+			spdlog::warn("ResourceTracker: Task interface unavailable for reset action");
+		}
+	}
+
 	static void InputThreadFunc()
 	{
 		auto& settings = Settings::Get();
@@ -82,11 +104,11 @@ namespace ResourceTracker
 			bool curReset = (GetAsyncKeyState(settings.resetKey) & 0x8000) != 0;
 
 			if (curAdd && !prevAdd && g_gameReady) {
-				OnAddKey();
+				QueueAddAction();
 			}
 
 			if (curReset && !prevReset && g_gameReady) {
-				OnResetKey();
+				QueueResetAction();
 			}
 
 			prevAdd = curAdd;
