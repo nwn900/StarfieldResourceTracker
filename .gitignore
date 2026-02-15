@@ -1,12 +1,19 @@
 /build/
 Plugin/build/
+
 # Dependencies cloned locally; CI clones them
 extern/*
 !extern/.gitkeep
+
+# IDE
 *.user
 .vs/
 *.sln
 *.vcxproj*
+.xmake/
+.cache/
+
+# Build outputs
 cmake-build-*/
 out/
 dist/*.dll

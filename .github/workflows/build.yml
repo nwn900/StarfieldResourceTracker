@@ -11,50 +11,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Clone CommonLibSF (maintained)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path extern | Out-Null
+          git clone --recurse-submodules --depth 1 https://github.com/libxse/commonlibsf.git extern/commonlibsf
+
+      - name: Install xmake
+        uses: xmake-io/github-action-setup-xmake@v1
         with:
-          submodules: recursive
+          xmake-version: latest
 
-      - name: Clone dependencies (if not submodules)
+      - name: Configure
         shell: pwsh
-        run: |
-          if (-not (Test-Path "extern/CommonLibSF/CMakeLists.txt")) {
-            New-Item -ItemType Directory -Force -Path extern | Out-Null
-            git clone --depth 1 https://github.com/Starfield-Reverse-Engineering/CommonLibSF.git extern/CommonLibSF
-          }
-          if (-not (Test-Path "extern/DKUtil/include/DKUtil/Logger.hpp")) {
-            if (-not (Test-Path "extern")) { New-Item -ItemType Directory -Force -Path extern | Out-Null }
-            git clone --depth 1 https://github.com/gottyduke/DKUtil.git extern/DKUtil
-          }
-
-      - name: Set up vcpkg
-        shell: pwsh
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git vcpkg
-          .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-          .\vcpkg\vcpkg install spdlog nlohmann-json xbyak --triplet x64-windows-static-md
-
-      - name: Configure CMake
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-        shell: pwsh
-        run: |
-          cmake -B build -S Plugin `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DSFSE_SUPPORT_XBYAK=ON `
-            -G "Visual Studio 17 2022" -A x64
+        run: xmake f -m releasedbg -y
 
       - name: Build
         shell: pwsh
-        run: cmake --build build --config Release
+        run: xmake build ResourceTracker
 
       - name: Prepare artifact
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          Copy-Item build/Release/ResourceTracker.dll artifact/
-          Copy-Item Plugin/dist/ResourceTracker.ini artifact/
+          $dll = Get-ChildItem -Recurse -Filter "ResourceTracker.dll" -Path build | Select-Object -First 1
+          if ($dll) {
+            Copy-Item $dll.FullName artifact/
+            Write-Host "Found DLL: $($dll.FullName)"
+          } else {
+            Write-Error "ResourceTracker.dll not found in build output"
+            exit 1
+          }
+          if (Test-Path "dist/ResourceTracker.ini") {
+            Copy-Item dist/ResourceTracker.ini artifact/
+          }
 
       - name: Upload ResourceTracker
         uses: actions/upload-artifact@v4
