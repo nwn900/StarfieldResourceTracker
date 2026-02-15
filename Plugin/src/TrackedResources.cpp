@@ -14,14 +14,22 @@ namespace ResourceTracker
 	{
 		std::lock_guard lk(_mtx);
 		_formIds.insert(a_formId);
-		Save();
+		SaveInternal();
+	}
+
+	void TrackedResources::AddBulk(const std::vector<FormID>& a_ids)
+	{
+		std::lock_guard lk(_mtx);
+		for (auto id : a_ids)
+			_formIds.insert(id);
+		SaveInternal();
 	}
 
 	void TrackedResources::Remove(FormID a_formId)
 	{
 		std::lock_guard lk(_mtx);
 		_formIds.erase(a_formId);
-		Save();
+		SaveInternal();
 	}
 
 	bool TrackedResources::Contains(FormID a_formId) const
@@ -34,7 +42,19 @@ namespace ResourceTracker
 	{
 		std::lock_guard lk(_mtx);
 		_formIds.clear();
-		Save();
+		SaveInternal();
+	}
+
+	std::size_t TrackedResources::Count() const
+	{
+		std::lock_guard lk(_mtx);
+		return _formIds.size();
+	}
+
+	std::vector<FormID> TrackedResources::GetAll() const
+	{
+		std::lock_guard lk(_mtx);
+		return { _formIds.begin(), _formIds.end() };
 	}
 
 	void TrackedResources::Load()
@@ -62,21 +82,20 @@ namespace ResourceTracker
 		}
 	}
 
-	void TrackedResources::Save()
+	void TrackedResources::Save() const
 	{
-		// Create Data, then Data\\SFSE, then Data\\SFSE\\Plugins
+		std::lock_guard lk(_mtx);
+		SaveInternal();
+	}
+
+	void TrackedResources::SaveInternal() const
+	{
 		for (const char* sub : { "Data", "Data\\SFSE", "Data\\SFSE\\Plugins" })
 			CreateDirectoryA(sub, nullptr);
-		const std::string dir = "Data\\SFSE\\Plugins";
-		const std::string path = dir + "\\" + _filename;
 
-		std::vector<std::uint32_t> ids;
-		{
-			std::lock_guard lk(_mtx);
-			ids.reserve(_formIds.size());
-			for (FormID id : _formIds)
-				ids.push_back(static_cast<std::uint32_t>(id));
-		}
+		const std::string path = std::string("Data\\SFSE\\Plugins\\") + _filename;
+
+		std::vector<std::uint32_t> ids(_formIds.begin(), _formIds.end());
 
 		try
 		{

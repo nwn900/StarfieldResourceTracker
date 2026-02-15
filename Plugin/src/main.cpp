@@ -1,13 +1,12 @@
 /*
  * Starfield Resource Tracker - SFSE Plugin
- * Lets the player tag missing resources for research, weapon/armor mods, and industrial fabrication,
- * and shows a magnifier icon when those resources appear in vendor menus, containers, or when selected.
- * Uses Address Library for SFSE Plugins for version-independent compatibility.
+ *
+ * Press [B] at a workbench to track missing crafting components.
+ * Press [\] to reset the tracked list.
+ * Keys are configurable in Data\SFSE\Plugins\ResourceTracker.ini.
  */
 
-#include "DKUtil/Hook.hpp"
 #include "ResourceTracker.h"
-#include "TrackedResources.h"
 
 namespace
 {
@@ -19,6 +18,7 @@ namespace
 			ResourceTracker::Init();
 			break;
 		case SFSE::MessagingInterface::kPostPostLoad:
+			ResourceTracker::SetGameReady(true);
 			break;
 		default:
 			break;
@@ -34,7 +34,7 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 
 	SFSE::Init(a_sfse, false);
 	DKUtil::Logger::Init(Plugin::NAME, std::to_string(Plugin::Version));
-	INFO("{} v{} loaded (Address Library enabled for all game versions)", Plugin::NAME, Plugin::Version);
+	INFO("{} v{} loaded", Plugin::NAME, Plugin::Version);
 
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
 
