@@ -8,6 +8,7 @@ namespace ResourceTracker
 	static std::thread       g_inputThread;
 	static std::atomic<bool> g_gameReady{ false };
 	static bool              g_hintShown{ false };
+	static bool              g_dumpedArrayHealth{ false };
 
 	static std::string VKToName(int vk)
 	{
@@ -39,6 +40,26 @@ namespace ResourceTracker
 
 	static void ScanAndTrackMissingResources()
 	{
+		if (!g_dumpedArrayHealth) {
+			g_dumpedArrayHealth = true;
+			std::size_t nonEmpty = 0;
+			std::size_t largest = 0;
+			std::uint32_t largestType = 0;
+			const auto totalTypes = static_cast<std::uint32_t>(RE::FormType::kTotal);
+			for (std::uint32_t i = 0; i < totalTypes; ++i) {
+				const auto size = dh->formArrays[i].formArray.size();
+				if (size > 0) {
+					++nonEmpty;
+				}
+				if (size > largest) {
+					largest = size;
+					largestType = i;
+				}
+			}
+			spdlog::info("ResourceTracker: DataHandler health - non-empty form arrays: {} / {}, largest array index: {}, size: {}",
+				nonEmpty, totalTypes, largestType, largest);
+		}
+
 		auto& tracked = TrackedResources::Get();
 		std::size_t before = tracked.Count();
 
@@ -113,6 +134,7 @@ namespace ResourceTracker
 			"ResourceTracker: Scan stats - COBJ forms: {} (with components: {}), RSPJ forms: {} (with components: {}), raw components: {}",
 			cobjForms, cobjWithComponents, rspjForms, rspjWithComponents, rawComponents);
 		spdlog::info("ResourceTracker: Scanned recipes. {} new resources tracked (total: {})", added, after);
+		RE::DebugNotification(std::format("ResourceTracker: {} new resource(s), total {}", added, after).c_str());
 
 		// Show in-game console notification
 		auto* console = RE::ConsoleLog::GetSingleton();
@@ -138,6 +160,7 @@ namespace ResourceTracker
 		{
 			console->Log("[ResourceTracker] Cleared {} tracked resource(s)", before);
 		}
+		RE::DebugNotification("[ResourceTracker] Tracked list reset");
 	}
 
 	static void InputThreadFunc()
@@ -167,6 +190,8 @@ namespace ResourceTracker
 					console->Log("[ResourceTracker] Press [%s] Add to the list  |  Press [%s] Reset list",
 						VKToName(settings.addKey).c_str(),
 						VKToName(settings.resetKey).c_str());
+					RE::DebugNotification(std::format("ResourceTracker: [{}] Add to list, [{}] Reset list",
+						VKToName(settings.addKey), VKToName(settings.resetKey)).c_str());
 					g_hintShown = true;
 				}
 			}
