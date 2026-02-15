@@ -13,6 +13,8 @@ namespace ResourceTracker
 		EnsureDefaults();
 		addKey   = GetPrivateProfileIntA("Keys", "AddToListKey", 0x42, INI_PATH);
 		resetKey = GetPrivateProfileIntA("Keys", "ResetListKey", 0xDC, INI_PATH);
+		nativeTrackKey = GetPrivateProfileIntA("Keys", "NativeTrackKey", 0x54, INI_PATH);
+		useNativeTrackBridge = GetPrivateProfileIntA("General", "UseNativeTrackBridge", 1, INI_PATH) != 0;
 	}
 
 	void Settings::EnsureDefaults()
@@ -27,6 +29,10 @@ namespace ResourceTracker
 				"66", INI_PATH);      // 0x42 = 66 = B
 			WritePrivateProfileStringA("Keys", "ResetListKey",
 				"220", INI_PATH);     // 0xDC = 220 = backslash
+			WritePrivateProfileStringA("Keys", "NativeTrackKey",
+				"84", INI_PATH);      // 0x54 = 84 = T
+			WritePrivateProfileStringA("General", "UseNativeTrackBridge",
+				"1", INI_PATH);
 		}
 	}
 }

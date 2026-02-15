@@ -18,25 +18,36 @@ namespace ResourceTracker
 		return std::format("0x{:02X}", vk);
 	}
 
-	template <class TEvent>
-	static bool DispatchUIEvent()
+	static bool SimulateVirtualKeyPress(int vk)
 	{
-		auto* source = TEvent::GetEventSource();
-		if (!source) {
+		if (vk <= 0 || vk > 0xFF) {
 			return false;
 		}
 
-		TEvent event{};
-		source->Notify(&event);
-		return true;
+		INPUT inputs[2]{};
+		inputs[0].type = INPUT_KEYBOARD;
+		inputs[0].ki.wVk = static_cast<WORD>(vk);
+		inputs[1].type = INPUT_KEYBOARD;
+		inputs[1].ki.wVk = static_cast<WORD>(vk);
+		inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+
+		const UINT sent = SendInput(2, inputs, sizeof(INPUT));
+		return sent == 2;
 	}
 
 	static void OnAddKey()
 	{
-		// Temporary safety mode:
-		// Dispatching internal UI tracking events currently triggers invalid Address Library ID lookups
-		// on this runtime/mod stack. Keep the plugin stable while we switch to a safer hook path.
-		spdlog::warn("ResourceTracker: B pressed, but tracking dispatch is temporarily disabled for stability");
+		auto& settings = Settings::Get();
+		if (!settings.useNativeTrackBridge) {
+			spdlog::warn("ResourceTracker: B pressed, but native track bridge is disabled in INI");
+			return;
+		}
+
+		if (SimulateVirtualKeyPress(settings.nativeTrackKey)) {
+			spdlog::info("ResourceTracker: B -> forwarded native track key [{}]", VKToName(settings.nativeTrackKey));
+		} else {
+			spdlog::warn("ResourceTracker: failed to send native track key {}", settings.nativeTrackKey);
+		}
 	}
 
 	static void OnResetKey()
@@ -116,6 +127,9 @@ namespace ResourceTracker
 		spdlog::info("ResourceTracker: Loaded {} tracked resource(s) from file", TrackedResources::Get().Count());
 		spdlog::info("ResourceTracker: Press [{}] at a workbench/research menu to toggle tracking", VKToName(s.addKey));
 		spdlog::info("ResourceTracker: Press [{}] to reset local tracked list", VKToName(s.resetKey));
+		spdlog::info("ResourceTracker: Native track bridge [{}], forwarded key: [{}]",
+			s.useNativeTrackBridge ? "enabled" : "disabled",
+			VKToName(s.nativeTrackKey));
 
 		g_running = true;
 		g_inputThread = std::thread(InputThreadFunc);
