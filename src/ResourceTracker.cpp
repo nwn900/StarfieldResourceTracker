@@ -7,6 +7,7 @@ namespace ResourceTracker
 	static std::atomic<bool> g_running{ false };
 	static std::thread       g_inputThread;
 	static std::atomic<bool> g_gameReady{ false };
+	static bool              g_hintShown{ false };
 
 	static std::string VKToName(int vk)
 	{
@@ -15,6 +16,25 @@ namespace ResourceTracker
 		if (GetKeyNameTextA(scanCode << 16, name, sizeof(name)) > 0)
 			return name;
 		return std::format("0x{:02X}", vk);
+	}
+
+	static std::size_t CollectComponentsFromArray(
+		const RE::BSTArray<RE::BSTTuple3<RE::TESForm*, RE::BGSCurveForm*, RE::BGSTypedFormValuePair::SharedVal>>* a_components,
+		std::vector<FormID>& a_out)
+	{
+		if (!a_components) {
+			return 0;
+		}
+
+		std::size_t added = 0;
+		for (const auto& entry : *a_components) {
+			auto* compForm = entry.first;
+			if (compForm && compForm->GetFormID() != 0) {
+				a_out.push_back(compForm->GetFormID());
+				++added;
+			}
+		}
+		return added;
 	}
 
 	static void ScanAndTrackMissingResources()
@@ -30,49 +50,57 @@ namespace ResourceTracker
 		}
 
 		std::vector<FormID> toAdd;
+		std::size_t cobjForms = 0;
+		std::size_t cobjWithComponents = 0;
+		std::size_t rspjForms = 0;
+		std::size_t rspjWithComponents = 0;
+		std::size_t rawComponents = 0;
 
 		// Scan BGSConstructibleObject (workbench recipes: weapon, armor, industrial, cooking, pharma)
 		auto cobjIdx = static_cast<std::uint32_t>(RE::FormType::kCOBJ);
 		auto& cobjArray = dh->formArrays[cobjIdx];
+		const RE::BSAutoReadLock cobjLocker(cobjArray.lock);
 		for (auto& formPtr : cobjArray.formArray)
 		{
 			if (!formPtr)
 				continue;
 
-			auto* cobj = static_cast<RE::BGSConstructibleObject*>(formPtr.get());
-			if (!cobj)
+			++cobjForms;
+			auto* cobj = formPtr->As<RE::BGSConstructibleObject>();
+			if (!cobj) {
 				continue;
+			}
 
-			// Components come from BGSCraftableForm base class
-			auto* craftable = static_cast<RE::BGSCraftableForm*>(cobj);
-			if (!craftable->components)
-				continue;
-
-			for (auto& entry : *craftable->components)
-			{
-				auto* compForm = entry.first;
-				if (compForm && compForm->GetFormID() != 0)
-					toAdd.push_back(compForm->GetFormID());
+			// In Starfield, recipe ingredients are usually on BGSCraftableForm::components.
+			// Some COBJ entries may also use the extra list at unk178.
+			std::size_t localAdded = 0;
+			localAdded += CollectComponentsFromArray(cobj->components, toAdd);
+			localAdded += CollectComponentsFromArray(cobj->unk178, toAdd);
+			rawComponents += localAdded;
+			if (localAdded > 0) {
+				++cobjWithComponents;
 			}
 		}
 
 		// Scan BGSResearchProjectForm (research lab recipes)
 		auto rspjIdx = static_cast<std::uint32_t>(RE::FormType::kRSPJ);
 		auto& rspjArray = dh->formArrays[rspjIdx];
+		const RE::BSAutoReadLock rspjLocker(rspjArray.lock);
 		for (auto& formPtr : rspjArray.formArray)
 		{
 			if (!formPtr)
 				continue;
 
-			auto* craftable = static_cast<RE::BGSCraftableForm*>(formPtr.get());
-			if (!craftable || !craftable->components)
+			++rspjForms;
+			auto* rspj = formPtr->As<RE::BGSResearchProjectForm>();
+			if (!rspj) {
 				continue;
+			}
 
-			for (auto& entry : *craftable->components)
-			{
-				auto* compForm = entry.first;
-				if (compForm && compForm->GetFormID() != 0)
-					toAdd.push_back(compForm->GetFormID());
+			auto localAdded = CollectComponentsFromArray(rspj->components, toAdd);
+			rawComponents += localAdded;
+			if (localAdded > 0) {
+				++rspjWithComponents;
 			}
 		}
 
@@ -81,6 +109,9 @@ namespace ResourceTracker
 
 		std::size_t after = tracked.Count();
 		std::size_t added = (after > before) ? (after - before) : 0;
+		spdlog::info(
+			"ResourceTracker: Scan stats - COBJ forms: {} (with components: {}), RSPJ forms: {} (with components: {}), raw components: {}",
+			cobjForms, cobjWithComponents, rspjForms, rspjWithComponents, rawComponents);
 		spdlog::info("ResourceTracker: Scanned recipes. {} new resources tracked (total: {})", added, after);
 
 		// Show in-game console notification
@@ -127,6 +158,18 @@ namespace ResourceTracker
 			GetWindowTextA(fg, title, sizeof(title));
 			if (!strstr(title, "Starfield"))
 				continue;
+
+			// Visible in the in-game console overlay, gives the player a persistent hint.
+			if (!g_hintShown && g_gameReady) {
+				auto* console = RE::ConsoleLog::GetSingleton();
+				if (console) {
+					console->SetUseConsoleOverlay(true);
+					console->Log("[ResourceTracker] Press [%s] Add to the list  |  Press [%s] Reset list",
+						VKToName(settings.addKey).c_str(),
+						VKToName(settings.resetKey).c_str());
+					g_hintShown = true;
+				}
+			}
 
 			bool curAdd   = (GetAsyncKeyState(settings.addKey)   & 0x8000) != 0;
 			bool curReset = (GetAsyncKeyState(settings.resetKey) & 0x8000) != 0;

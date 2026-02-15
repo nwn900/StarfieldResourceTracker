@@ -35,17 +35,22 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          New-Item -ItemType Directory -Force -Path "artifact/SFSE/Plugins" | Out-Null
           $dll = Get-ChildItem -Recurse -Filter "ResourceTracker.dll" -Path build | Select-Object -First 1
           if ($dll) {
-            Copy-Item $dll.FullName artifact/
+            Copy-Item $dll.FullName "artifact/SFSE/Plugins/ResourceTracker.dll"
             Write-Host "Found DLL: $($dll.FullName)"
           } else {
             Write-Error "ResourceTracker.dll not found in build output"
             exit 1
           }
           if (Test-Path "dist/ResourceTracker.ini") {
-            Copy-Item dist/ResourceTracker.ini artifact/
+            Copy-Item "dist/ResourceTracker.ini" "artifact/SFSE/Plugins/ResourceTracker.ini"
           }
+          if (Test-Path "artifact/Starfield Resource Tracker.zip") {
+            Remove-Item "artifact/Starfield Resource Tracker.zip" -Force
+          }
+          Compress-Archive -Path "artifact/SFSE" -DestinationPath "artifact/Starfield Resource Tracker.zip"
 
       - name: Upload ResourceTracker
         uses: actions/upload-artifact@v4
