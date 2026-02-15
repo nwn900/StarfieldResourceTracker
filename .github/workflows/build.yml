@@ -26,6 +26,12 @@ jobs:
             git clone --depth 1 https://github.com/gottyduke/DKUtil.git extern/DKUtil
           }
 
+      - name: Patch CommonLibSF for Address Library format 5
+        shell: pwsh
+        run: |
+          $path = "extern/CommonLibSF/include/REL/ID.h"
+          (Get-Content $path -Raw) -replace 'kDatabaseVersion = 2', 'kDatabaseVersion = 5  // Match Address Library for SFSE Plugins' | Set-Content $path -NoNewline
+
       - name: Set up vcpkg
         shell: pwsh
         run: |
